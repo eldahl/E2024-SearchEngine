@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConsoleSearch
@@ -13,10 +15,14 @@ namespace ConsoleSearch
         Dictionary<string, int> mWords;
 
         public SearchLogic()
-        { 
-            var response = _httpClient.GetAsync("localhost/api/words").Result;
+        {
+            _httpClient.BaseAddress = new Uri("http://localhost:5225");
+            var response = _httpClient.GetAsync("/Word/words").Result;
             var body = response.Content.ReadAsStringAsync().Result;
             Console.WriteLine(body);
+            
+            var res = _httpClient.GetAsync("/Word/GetAllWords").Result.Content.ReadAsStringAsync().Result;
+            mWords = JsonSerializer.Deserialize<Dictionary<string, int>>(res);
             //mWords = mDatabase.GetAllWords();
         }
 
@@ -29,12 +35,20 @@ namespace ConsoleSearch
 
         public Dictionary<int, int> GetDocuments(List<int> wordIds)
         {
-            return null;//mDatabase.GetDocuments(wordIds);
+            var res = _httpClient.PostAsync(
+                    "/Document/GetDocuments", 
+                    new StringContent(JsonSerializer.Serialize(wordIds), Encoding.UTF8, "application/json"))
+                .Result.Content.ReadAsStringAsync().Result;
+            return JsonSerializer.Deserialize<Dictionary<int, int>>(res);
+            //return mDatabase.GetDocuments(wordIds);
         }
 
         public List<string> GetDocumentDetails(List<int> docIds)
         {
-            return null;//mDatabase.GetDocDetails(docIds);
+            var res = _httpClient.PostAsync("/Document/GetDocDetails", new StringContent(JsonSerializer.Serialize(docIds), Encoding.UTF8, "application/json"))
+                .Result.Content.ReadAsStringAsync().Result;
+            return JsonSerializer.Deserialize<List<string>>(res);
+            //return mDatabase.GetDocDetails(docIds);
         }
     }
 }

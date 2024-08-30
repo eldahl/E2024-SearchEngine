@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WordService.Controllers;
@@ -6,9 +7,17 @@ namespace WordService.Controllers;
 [Route("[controller]")]
 public class DatabaseController : ControllerBase
 {
-    [HttpGet]
-    public string Get()
+    private readonly Database _database;
+
+    public DatabaseController(Database db)
     {
-        return "test";
+        _database = db;
+    }
+
+    [HttpGet("ClearDB")]
+    public ActionResult ClearDatabase()
+    {
+        _database.ClearDB();
+        return Ok();
     }
 }

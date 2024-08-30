@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using WordService.Model;
 
 namespace Indexer
 {
@@ -9,9 +14,14 @@ namespace Indexer
         private readonly char[] sep = " \\\n\t\"$'!,?;.:-_**+=)([]{}<>/@&%€#".ToCharArray();
 
         private Dictionary<string, int> words = new Dictionary<string, int>();
-        private Dictionary<string, int> documents = new Dictionary<string, int>();
+        private List<Document> documents = new();
+    
+        private HttpClient httpClient = new HttpClient();
 
-        Database mdatabase = new Database();
+        public Crawler()
+        {
+            httpClient.BaseAddress = new Uri("http://localhost:5225");
+        }
 
         //Return a dictionary containing all words (as the key)in the file
         // [f] and the value is the number of occurrences of the key in file.
@@ -53,8 +63,17 @@ namespace Indexer
             {
                 if (extensions.Contains(file.Extension))
                 {
-                    documents.Add(file.FullName, documents.Count + 1);
-                    mdatabase.InsertDocument(documents[file.FullName], file.FullName);
+                    Document document = new();
+                    document.url = file.FullName;
+                    document.id = documents.Count + 1;
+                    documents.Add(document);
+                    var json = JsonSerializer.Serialize(document);
+                    Console.WriteLine("Doc Json: \n" + json + "\n");
+                    var res = httpClient.PostAsync(
+                        "/Document/InsertDocument", 
+                        new StringContent(json, Encoding.UTF8, "application/json")).Result;
+                    Console.WriteLine("Status: " + res.StatusCode);
+                    //mdatabase.InsertDocument(documents[file.FullName], file.FullName);
                     Dictionary<string, int> newWords = new Dictionary<string, int>();
                     ISet<string> wordsInFile = ExtractWordsInFile(file);
                     foreach (var aWord in wordsInFile)
@@ -65,10 +84,18 @@ namespace Indexer
                             newWords.Add(aWord, words[aWord]);
                         }
                     }
-
-                    mdatabase.InsertAllWords(newWords);
-
-                    mdatabase.InsertAllOcc(documents[file.FullName], GetWordIdFromWords(wordsInFile));
+                    
+                    var result = httpClient.PostAsync("/Word/InsertAllWords", new StringContent(JsonSerializer.Serialize(newWords), Encoding.UTF8, "application/json")).Result;
+                    Console.WriteLine("Status: " + result.StatusCode);
+                    //mdatabase.InsertAllWords(newWords);
+                    
+                    Occurrences occ = new Occurrences();
+                    occ.documentId = document.id;
+                    occ.wordIds = GetWordIdFromWords(wordsInFile);
+                    Console.WriteLine("Occ JSON: \n" + JsonSerializer.Serialize(occ) + "\n");
+                    result = httpClient.PostAsync("/Occurrence/InsertAllOccurrences", new StringContent(JsonSerializer.Serialize(occ), Encoding.UTF8, "application/json")).Result;
+                    Console.WriteLine("Status: " + result.StatusCode);
+                    //mdatabase.InsertAllOcc(documents[file.FullName], GetWordIdFromWords(wordsInFile));
                 }
             }
 

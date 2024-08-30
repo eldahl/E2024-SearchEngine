@@ -4,12 +4,15 @@ using Microsoft.Data.SqlClient;
 public class Database
 {
     private readonly SqlConnection _connection;
-            
+    
     public Database()
     {
         _connection = new ("Server=localhost;User Id=sa;Password=SuperSecret7!;Encrypt=false;");
         _connection.Open();
-        
+    }
+
+    public void ClearDB()
+    {
         Execute("DROP TABLE IF EXISTS Occurrences");
         Execute("DROP TABLE IF EXISTS Words");
         Execute("DROP TABLE IF EXISTS Documents");
@@ -23,7 +26,7 @@ public class Database
         
         //Execute("CREATE INDEX word_index ON Occ (wordId)");
     }
-    
+
     private void Execute(string sql)
     {
         using var trans = _connection.BeginTransaction();
